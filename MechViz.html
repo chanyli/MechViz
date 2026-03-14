@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MechViz — Deformation Visualizer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #06090f;
+      --panel: #0b1118;
+      --card: #0f1824;
+      --border: #1a2e42;
+      --cyan: #22d3ee;
+      --amber: #f59e0b;
+      --red: #f87171;
+      --purple: #c084fc;
+      --green: #4ade80;
+      --text: #e2e8f0;
+      --muted: #566880;
+      --muted2: #3d5166;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      padding: 1.4rem 2rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+      background: linear-gradient(180deg, rgba(34,211,238,0.04) 0%, transparent 100%);
+    }
+    .logo-box {
+      width: 46px; height: 46px;
+      background: var(--amber);
+      display: grid; place-items: center;
+      font-family: 'Syne', sans-serif;
+      font-weight: 800; font-size: 1rem;
+      color: #06090f;
+      flex-shrink: 0;
+    }
+    .hdr-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800; font-size: 1.5rem;
+      color: var(--amber); letter-spacing: -0.02em;
+    }
+    .hdr-sub {
+      font-size: 0.64rem; color: var(--muted);
+      letter-spacing: 0.1em; margin-top: 2px;
+    }
+
+    /* ── Nav ── */
+    nav {
+      display: flex;
+      padding: 0 2rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+    }
+    .tab-btn {
+      padding: 0.75rem 1.4rem;
+      background: none; border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.72rem; letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer; transition: color 0.2s, border-color 0.2s;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--amber); border-bottom-color: var(--amber); }
+
+    /* ── Main ── */
+    main { padding: 1.8rem 2rem; max-width: 900px; margin: 0 auto; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ── Canvas ── */
+    .canvas-wrap {
+      background: #05080e;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 1.2rem;
+      position: relative;
+    }
+    canvas { display: block; width: 100%; height: 280px; }
+
+    /* ── Slider row ── */
+    .ctrl-row {
+      display: grid;
+      grid-template-columns: 120px 1fr 120px;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.2rem;
+    }
+    .ctrl-lbl {
+      font-size: 0.65rem; color: var(--muted); letter-spacing: 0.06em;
+    }
+    .ctrl-lbl.right { text-align: right; }
+    input[type="range"] {
+      -webkit-appearance: none; appearance: none;
+      width: 100%; height: 3px;
+      background: var(--border); border-radius: 2px; outline: none;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 18px; height: 18px;
+      background: var(--amber); border-radius: 50%;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 18px; height: 18px;
+      background: var(--amber); border: none; border-radius: 50%;
+    }
+
+    /* ── Info grid ── */
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    .info-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 3px; padding: 1rem;
+    }
+    .info-card h3 {
+      font-size: 0.6rem; color: var(--muted);
+      letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.55rem;
+    }
+    .eq { font-size: 0.82rem; color: var(--cyan); line-height: 1.8; }
+    .state-val { font-size: 0.78rem; color: var(--amber); line-height: 1.8; }
+
+    /* ── Legend ── */
+    .legend { display: flex; flex-wrap: wrap; gap: 1rem 1.8rem; padding: 0.5rem 0 0.8rem; font-size: 0.62rem; color: var(--muted); }
+    .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+    .l-line { width: 18px; height: 2px; border-radius: 1px; }
+    .l-dash { width: 18px; height: 0; border-top: 2px dashed; opacity: 0.5; }
+
+    /* ── Humor bar ── */
+    .humor-bar {
+      background: rgba(245,158,11,0.06);
+      border: 1px solid rgba(245,158,11,0.18);
+      border-radius: 3px;
+      padding: 0.55rem 1rem;
+      font-size: 0.72rem; color: var(--amber);
+      display: flex; align-items: center; gap: 0.6rem;
+      min-height: 2.6rem; transition: all 0.3s;
+    }
+    .humor-icon { font-size: 1.1rem; flex-shrink: 0; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center; padding: 1.5rem 2rem;
+      font-size: 0.6rem; color: var(--muted2);
+      border-top: 1px solid var(--border); margin-top: 1rem;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .info-grid { grid-template-columns: 1fr; }
+      .ctrl-row { grid-template-columns: 80px 1fr 80px; gap: 0.5rem; }
+      main { padding: 1rem; }
+      nav { padding: 0 1rem; }
+      header { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-box">MV</div>
+  <div>
+    <div class="hdr-title">MechViz</div>
+    <div class="hdr-sub">MECHANICS OF MATERIALS — INTERACTIVE DEFORMATION VISUALIZER</div>
+  </div>
+</header>
+
+<nav>
+  <button class="tab-btn active" id="btn-axial"   onclick="showTab('axial')">01 // AXIAL</button>
+  <button class="tab-btn"        id="btn-torsion" onclick="showTab('torsion')">02 // TORSION</button>
+  <button class="tab-btn"        id="btn-bending" onclick="showTab('bending')">03 // BENDING</button>
+</nav>
+
+<main>
+
+  <!-- ═══════════════ AXIAL ═══════════════ -->
+  <div class="panel active" id="panel-axial">
+    <div class="canvas-wrap"><canvas id="cv-axial"></canvas></div>
+    <div class="ctrl-row">
+      <span class="ctrl-lbl">◄ COMPRESSION</span>
+      <input type="range" id="sl-axial" min="-100" max="100" value="0" oninput="onAxial(+this.value)">
+      <span class="ctrl-lbl right">TENSION ►</span>
+    </div>
+    <div class="info-grid">
+      <div class="info-card">
+        <h3>Governing Equations</h3>
+        <div class="eq">δ = PL / AE</div>
+        <div class="eq">ε = δ / L = σ / E</div>
+        <div class="eq">ε_lat = − ν · ε_axial</div>
+        <div class="eq">ν = 0.30 (assumed)</div>
+      </div>
+      <div class="info-card">
+        <h3>Current State</h3>
+        <div class="state-val" id="axial-state">No load — bar is chillin' 😎</div>
+      </div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="l-line" style="background:var(--cyan)"></div>Grid lines</div>
+      <div class="legend-item"><div class="l-dash" style="border-color:var(--muted)"></div>Original shape</div>
+      <div class="legend-item"><div class="l-line" style="background:var(--red)"></div>Tension force</div>
+      <div class="legend-item"><div class="l-line" style="background:var(--purple)"></div>Compression force</div>
+      <div class="legend-item"><div class="l-line" style="background:var(--amber)"></div>Lateral change (Poisson)</div>
+    </div>
+    <div class="humor-bar">
+      <span class="humor-icon" id="axial-ico">😐</span>
+      <span id="axial-msg">Drag the slider. The bar is begging for purpose.</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════ TORSION ═══════════════ -->
+  <div class="panel" id="panel-torsion">
+    <div class="canvas-wrap"><canvas id="cv-torsion"></canvas></div>
+    <div class="ctrl-row">
+      <span class="ctrl-lbl">T = 0</span>
+      <input type="range" id="sl-torsion" min="0" max="100" value="0" oninput="onTorsion(+this.value)">
+      <span class="ctrl-lbl right">T = T_max</span>
+    </div>
+    <div class="info-grid">
+      <div class="info-card">
+        <h3>Governing Equations</h3>
+        <div class="eq">φ = TL / GJ</div>
+        <div class="eq">τ = Tρ / J</div>
+        <div class="eq">τ_max = Tc / J</div>
+        <div class="eq">γ = ρ · φ / L</div>
+      </div>
+      <div class="info-card">
+        <h3>Current State</h3>
+        <div class="state-val" id="torsion-state">No torque — shaft is perfectly boring</div>
+      </div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="l-dash" style="border-color:var(--cyan)"></div>Original grid positions (dashed)</div>
+      <div class="legend-item"><div class="l-line" style="background:var(--cyan)"></div>Twisted generator lines (solid)</div>
+      <div class="legend-item"><div class="l-line" style="background:var(--amber)"></div>Cross-section planes (stay vertical) / φ arc</div>
+      <div class="legend-item"><div class="l-line" style="background:var(--green)"></div>Reference line α = 0 (original, 12 o'clock)</div>
+    </div>
+    <div class="humor-bar">
+      <span class="humor-icon" id="torsion-ico">😐</span>
+      <span id="torsion-msg">Apply some torque. Those straight lines look suspiciously smug.</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════ BENDING ═══════════════ -->
+  <div class="panel" id="panel-bending">
+    <div class="canvas-wrap"><canvas id="cv-bending"></canvas></div>
+    <div class="ctrl-row">
+      <span class="ctrl-lbl">P = 0</span>
+      <input type="range" id="sl-bending" min="0" max="100" value="0" oninput="onBending(+this.value)">
+      <span class="ctrl-lbl right">P = P_max</span>
+    </div>
+    <div class="info-grid">
+      <div class="info-card">
+        <h3>Governing Equations</h3>
+        <div class="eq">v_max = PL³ / 48EI</div>
+        <div class="eq">σ = −My / I</div>
+        <div class="eq">κ = M / EI = v″</div>
+        <div class="eq">Simply supported, central P</div>
+      </div>
+      <div class="info-card">
+        <h3>Current State</h3>
+        <div class="state-val" id="bending-state">No load — beam at full dignity</div>
+      </div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="l-line" style="background:var(--cyan)"></div>Cross-sections (plane → plane)</div>
+      <div class="legend-item"><div class="l-line" style="background:var(--amber)"></div>Neutral axis</div>
+      <div class="legend-item"><div class="l-line" style="background:var(--purple)"></div>Top fiber (compression)</div>
+      <div class="legend-item"><div class="l-line" style="background:var(--red)"></div>Bottom fiber (tension)</div>
+    </div>
+    <div class="humor-bar">
+      <span class="humor-icon" id="bending-ico">😐</span>
+      <span id="bending-msg">Apply load. Euler-Bernoulli is watching, and he's judging.</span>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  MechViz v1.0 &nbsp;|&nbsp; Deformations scaled ×8–12 for visibility &nbsp;|&nbsp; ν = 0.30 &nbsp;|&nbsp;
+  No beams were permanently harmed in the making of this app
+</footer>
+
+<script>
+"use strict";
+// ═══════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════
+const S = { axial: 0, torsion: 0, bending: 0 };  // -1..1, 0..1, 0..1
+
+// ═══════════════════════════════════════════════════════════
+//  CANVAS SETUP  (retina-aware)
+// ═══════════════════════════════════════════════════════════
+function prepCtx(id) {
+  const cv  = document.getElementById(id);
+  const dpr = window.devicePixelRatio || 1;
+  const W   = cv.getBoundingClientRect().width  || cv.offsetWidth  || 800;
+  const H   = cv.getBoundingClientRect().height || cv.offsetHeight || 280;
+  cv.width  = W * dpr;
+  cv.height = H * dpr;
+  const ctx = cv.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx._W = W; ctx._H = H;
+  return ctx;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SHARED UTILITIES
+// ═══════════════════════════════════════════════════════════
+function arrow(ctx, x1, y1, x2, y2, col, hs = 10, lw = 2.5) {
+  const dx = x2 - x1, dy = y2 - y1;
+  if (Math.hypot(dx, dy) < 2) return;
+  const a  = Math.atan2(dy, dx);
+  ctx.save();
+  ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = lw;
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - hs * Math.cos(a - 0.38), y2 - hs * Math.sin(a - 0.38));
+  ctx.lineTo(x2 - hs * Math.cos(a + 0.38), y2 - hs * Math.sin(a + 0.38));
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function dashedRect(ctx, x, y, w, h, col) {
+  ctx.save();
+  ctx.strokeStyle = col; ctx.lineWidth = 1;
+  ctx.setLineDash([5, 5]);
+  ctx.strokeRect(x, y, w, h);
+  ctx.restore();
+}
+
+function hatch(ctx, x, y, w, h, col) {
+  // Vertical hatch wall
+  ctx.save();
+  ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + h); ctx.stroke();
+  ctx.lineWidth = 1; ctx.strokeStyle = col;
+  const step = 8;
+  for (let yi = y + step / 2; yi < y + h; yi += step) {
+    ctx.beginPath(); ctx.moveTo(x, yi); ctx.lineTo(x - 10, yi + 8); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  1.  AXIAL
+//      Fixed left wall, free right end with applied P
+//      ε = P · maxStrain, lateral via Poisson ν = 0.30
+// ═══════════════════════════════════════════════════════════
+function drawAxial(P) {
+  const ctx = prepCtx('cv-axial');
+  const W = ctx._W, H = ctx._H;
+  ctx.clearRect(0, 0, W, H);
+
+  const wallX  = 80;
+  const L0     = W - wallX - 90;   // original bar length
+  const h0     = 72;
+  const cy     = H / 2;
+  const nu     = 0.30;
+  const maxEps = 0.26;              // visual strain at max load
+
+  const eps = P * maxEps;
+  const L   = L0 * (1 + eps);
+  const h   = h0 * (1 - nu * eps);
+  const y0  = cy - h / 2;
+
+  // Fixed left wall (bar always starts at wallX)
+  hatch(ctx, wallX, cy - h0 * 0.8, 12, h0 * 1.6, 'rgba(34,211,238,0.4)');
+
+  // Ghost of original shape
+  dashedRect(ctx, wallX, cy - h0 / 2, L0, h0, 'rgba(86,104,128,0.4)');
+
+  // Lateral Poisson indicator (amber brackets showing height change)
+  if (Math.abs(P) > 0.04) {
+    const xMid = wallX + L / 2;
+    const yGhost0 = cy - h0 / 2;
+    const yGhost1 = cy + h0 / 2;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(245,158,11,0.65)';
+    ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+    // Bracket top
+    ctx.beginPath();
+    ctx.moveTo(xMid - 12, yGhost0); ctx.lineTo(xMid + 12, yGhost0);
+    ctx.moveTo(xMid - 12, y0);      ctx.lineTo(xMid + 12, y0);
+    ctx.moveTo(xMid, yGhost0);      ctx.lineTo(xMid, y0);
+    // Bracket bottom
+    ctx.moveTo(xMid - 12, yGhost1); ctx.lineTo(xMid + 12, yGhost1);
+    ctx.moveTo(xMid - 12, y0 + h);  ctx.lineTo(xMid + 12, y0 + h);
+    ctx.moveTo(xMid, yGhost1);      ctx.lineTo(xMid, y0 + h);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Bar fill
+  const grad = ctx.createLinearGradient(0, y0, 0, y0 + h);
+  if (P > 0.03) {
+    grad.addColorStop(0, 'rgba(248,113,113,0.18)');
+    grad.addColorStop(0.5, 'rgba(248,113,113,0.06)');
+    grad.addColorStop(1, 'rgba(248,113,113,0.18)');
+  } else if (P < -0.03) {
+    grad.addColorStop(0, 'rgba(192,132,252,0.18)');
+    grad.addColorStop(0.5, 'rgba(192,132,252,0.06)');
+    grad.addColorStop(1, 'rgba(192,132,252,0.18)');
+  } else {
+    grad.addColorStop(0, 'rgba(34,211,238,0.10)');
+    grad.addColorStop(1, 'rgba(34,211,238,0.04)');
+  }
+  ctx.fillStyle = grad;
+  ctx.fillRect(wallX, y0, L, h);
+
+  // Grid vertical lines (move proportionally from fixed left end)
+  const nV = 8, nH = 4;
+  for (let i = 0; i <= nV; i++) {
+    const t = i / nV;
+    const xL = wallX + t * L;
+    const alpha = (i === 0 || i === nV) ? 0.9 : 0.55;
+    ctx.save();
+    ctx.strokeStyle = `rgba(34,211,238,${alpha})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(xL, y0); ctx.lineTo(xL, y0 + h); ctx.stroke();
+    ctx.restore();
+  }
+
+  // Grid horizontal lines (move with Poisson effect)
+  for (let j = 0; j <= nH; j++) {
+    const t = j / nH;
+    const yL = y0 + t * h;
+    const alpha = (j === 0 || j === nH) ? 0.9 : 0.50;
+    ctx.save();
+    ctx.strokeStyle = `rgba(34,211,238,${alpha})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(wallX, yL); ctx.lineTo(wallX + L, yL); ctx.stroke();
+    ctx.restore();
+  }
+
+  // Bar outline
+  const outCol = P > 0.03 ? '#f87171' : (P < -0.03 ? '#c084fc' : '#22d3ee');
+  ctx.save();
+  ctx.strokeStyle = outCol; ctx.lineWidth = 2;
+  ctx.strokeRect(wallX, y0, L, h);
+  ctx.restore();
+
+  // Force arrow at right end
+  if (Math.abs(P) > 0.01) {
+    const aLen = 35 + Math.abs(P) * 40;
+    const xTip = wallX + L;
+    if (P > 0) {
+      arrow(ctx, xTip + 4, cy, xTip + 4 + aLen, cy, '#f87171');
+      ctx.save(); ctx.fillStyle = '#f87171'; ctx.font = 'bold 12px Space Mono';
+      ctx.textAlign = 'center'; ctx.fillText('P', xTip + 4 + aLen / 2, cy - 14);
+      ctx.restore();
+    } else {
+      arrow(ctx, xTip + 4 + aLen, cy, xTip + 4, cy, '#c084fc');
+      ctx.save(); ctx.fillStyle = '#c084fc'; ctx.font = 'bold 12px Space Mono';
+      ctx.textAlign = 'center'; ctx.fillText('P', xTip + 4 + aLen / 2, cy - 14);
+      ctx.restore();
+    }
+    // Reaction arrow at wall
+    const rCol = P > 0 ? '#f87171' : '#c084fc';
+    if (P > 0) {
+      arrow(ctx, wallX - 4, cy, wallX - 4 - aLen * 0.7, cy, rCol, 8, 1.5);
+    } else {
+      arrow(ctx, wallX - 4 - aLen * 0.7, cy, wallX - 4, cy, rCol, 8, 1.5);
+    }
+  }
+
+  // Dimensions: δ annotation
+  if (Math.abs(eps) > 0.02) {
+    const yAnn = y0 - 18;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(245,158,11,0.7)';
+    ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(wallX + L0, yAnn - 6); ctx.lineTo(wallX + L0, yAnn + 6);
+    ctx.moveTo(wallX + L, yAnn - 6);  ctx.lineTo(wallX + L, yAnn + 6);
+    ctx.moveTo(wallX + L0, yAnn);     ctx.lineTo(wallX + L, yAnn);
+    ctx.stroke(); ctx.restore();
+    ctx.save();
+    ctx.fillStyle = '#f59e0b'; ctx.font = '10px Space Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('δ', (wallX + L0 + wallX + L) / 2, yAnn - 10);
+    ctx.restore();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  2.  TORSION — Two-view orthographic layout
+//
+//  LEFT  — Front view (elevation):
+//    Shaft drawn as a rectangle. Each longitudinal surface
+//    generator at circumferential angle α₀ projects onto the
+//    front plane as:  y(x) = cy − R·cos(α₀ + φ·x/L)
+//    i.e. a cosine curve — straight at φ=0, sinusoid when
+//    twisted. Amber vertical lines = cross-section planes;
+//    they stay perfectly vertical (plane sections remain plane
+//    for a circular shaft under pure torsion).
+//
+//  RIGHT — End view (right/free face, looking from +x → −x):
+//    True circular cross-section. Dashed radial lines show
+//    original (untwisted) grid; solid lines show rotated grid.
+//    Green dashed = reference at α₀=0 (12 o'clock).
+//    Amber solid  = same reference after twist φ.
+//    Arc + label show angle of twist φ.
+//
+//  Convention (right-hand rule, α from +y axis toward +z):
+//    Front view: screen_y = cy − R·cos(α₀ + φ·ξ),  ξ = x/L
+//    End view:   screen_x = svCx + svR·sin(α₀+φ),
+//                screen_y = svCy − svR·cos(α₀+φ)
+//    Visibility in front view: sin(α_mid) ≥ 0 → front face
+// ═══════════════════════════════════════════════════════════
+function drawTorsion(T) {
+  const ctx = prepCtx('cv-torsion');
+  const W = ctx._W, H = ctx._H;
+  ctx.clearRect(0, 0, W, H);
+
+  const phi = T * Math.PI * 1.3;          // total angle of twist (visual)
+  const cy  = H / 2;
+  const R   = Math.min(50, (H - 72) / 2); // shaft radius in px
+
+  // ── Layout ──────────────────────────────────────────────
+  const splitX  = W * 0.615;          // vertical divider x
+  const gapX    = W * 0.030;          // breathing room after divider
+  const fX0     = 54;                 // front view shaft left  (room for hatch)
+  const fX1     = splitX - 42;        // front view shaft right (room for torque arrow)
+  const fL      = fX1 - fX0;         // shaft visual length
+
+  const svAvail = W - splitX - gapX - 8;
+  const svCx    = splitX + gapX + svAvail / 2;
+  const svCy    = cy;
+  const svR     = Math.min(R * 1.10, svAvail / 2 - 20);
+
+  // ── Panel labels ─────────────────────────────────────────
+  ctx.save();
+  ctx.font = 'bold 8px Space Mono';
+  ctx.fillStyle = 'rgba(86,104,128,0.80)';
+  ctx.textAlign = 'center';
+  ctx.fillText('FRONT VIEW', (fX0 + fX1) / 2, 13);
+  ctx.fillText('END VIEW  (right face)', svCx, 13);
+  ctx.restore();
+
+  // ── Divider ──────────────────────────────────────────────
+  ctx.save();
+  ctx.strokeStyle = 'rgba(26,46,66,1.0)';
+  ctx.lineWidth = 1; ctx.setLineDash([4, 6]);
+  ctx.beginPath(); ctx.moveTo(splitX, 20); ctx.lineTo(splitX, H - 16); ctx.stroke();
+  ctx.restore();
+
+  // ════════════════════════════════════════════════════════
+  //  FRONT VIEW
+  // ════════════════════════════════════════════════════════
+
+  // Shaft body fill
+  ctx.fillStyle = '#050c18';
+  ctx.fillRect(fX0, cy - R, fL, 2 * R);
+
+  // ── Longitudinal generator lines ──────────────────────
+  //    Front/back visibility judged at shaft mid (ξ = 0.5)
+  const nLines = 18;
+  const nPts   = 220;
+
+  for (let pass = 0; pass < 2; pass++) {   // pass 0 = back, 1 = front
+    for (let k = 0; k < nLines; k++) {
+      const alpha0   = (k / nLines) * 2 * Math.PI;
+      const alphaMid = alpha0 + phi * 0.5;
+      const sinMid   = Math.sin(alphaMid);
+      const isFront  = sinMid >= 0;
+
+      if (pass === 0 &&  isFront) continue;
+      if (pass === 1 && !isFront) continue;
+
+      ctx.save();
+      if (!isFront) {
+        ctx.strokeStyle = 'rgba(34,211,238,0.11)';
+        ctx.lineWidth = 0.7; ctx.setLineDash([3, 5]);
+      } else {
+        const b = (0.28 + 0.60 * sinMid).toFixed(2);
+        ctx.strokeStyle = `rgba(34,211,238,${b})`;
+        ctx.lineWidth = 1.0;
+      }
+      ctx.beginPath();
+      for (let p = 0; p <= nPts; p++) {
+        const xi  = p / nPts;
+        const xPx = fX0 + xi * fL;
+        const yPx = cy - R * Math.cos(alpha0 + phi * xi);
+        p === 0 ? ctx.moveTo(xPx, yPx) : ctx.lineTo(xPx, yPx);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // ── Highlighted generator α₀=0 (starts at top) in amber ──
+  if (T > 0.03) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(245,158,11,0.88)';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    for (let p = 0; p <= nPts; p++) {
+      const xi  = p / nPts;
+      const xPx = fX0 + xi * fL;
+      const yPx = cy - R * Math.cos(phi * xi);   // α₀ = 0
+      p === 0 ? ctx.moveTo(xPx, yPx) : ctx.lineTo(xPx, yPx);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // ── Cross-section planes (vertical lines — stay vertical) ──
+  const nCS = 14;
+  for (let c = 0; c <= nCS; c++) {
+    const xi  = c / nCS;
+    const xPx = fX0 + xi * fL;
+    const isBound = (c === 0 || c === nCS);
+    ctx.save();
+    ctx.strokeStyle = isBound
+      ? 'rgba(245,158,11,0.82)'
+      : 'rgba(245,158,11,0.38)';
+    ctx.lineWidth = isBound ? 1.8 : 0.9;
+    ctx.beginPath(); ctx.moveTo(xPx, cy - R); ctx.lineTo(xPx, cy + R); ctx.stroke();
+    ctx.restore();
+  }
+
+  // ── Shaft silhouette (top & bottom edges) ──
+  ctx.save();
+  ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(fX0, cy - R); ctx.lineTo(fX1, cy - R); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(fX0, cy + R); ctx.lineTo(fX1, cy + R); ctx.stroke();
+  ctx.restore();
+
+  // ── Fixed (left) end — end plate + hatch ──
+  ctx.save();
+  ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(fX0, cy - R); ctx.lineTo(fX0, cy + R); ctx.stroke();
+  ctx.restore();
+  hatch(ctx, fX0, cy - R * 1.18, 10, R * 2.36, 'rgba(34,211,238,0.38)');
+
+  // ── Free (right) end — end plate ──
+  ctx.save();
+  ctx.strokeStyle = T > 0.02 ? '#f59e0b' : '#22d3ee'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(fX1, cy - R); ctx.lineTo(fX1, cy + R); ctx.stroke();
+  ctx.restore();
+
+  // ── Torque curved arrow at right end ──
+  if (T > 0.01) {
+    const tAx = fX1 + 20;
+    drawTorqueArrow(ctx, tAx, cy, R * 0.62, '#4ade80', -1);
+    ctx.save();
+    ctx.fillStyle = '#4ade80'; ctx.font = 'bold 12px Space Mono'; ctx.textAlign = 'left';
+    ctx.fillText('T', tAx + R * 0.62 + 5, cy + 4);
+    ctx.restore();
+  }
+
+  // ── FIXED / FREE end labels ──
+  ctx.save();
+  ctx.font = '8px Space Mono'; ctx.fillStyle = 'rgba(86,104,128,0.60)';
+  ctx.textAlign = 'center';
+  ctx.fillText('FIXED', fX0, cy + R + 15);
+  ctx.fillText('FREE',  fX1, cy + R + 15);
+  ctx.restore();
+
+  // ════════════════════════════════════════════════════════
+  //  END VIEW  (right/free face, looking from +x toward −x)
+  //  screen_x = svCx + svR·sin(α),  screen_y = svCy − svR·cos(α)
+  //  At the free end (x = L): each line at α₀ is now at α₀ + φ
+  // ════════════════════════════════════════════════════════
+
+  // Circle background fill
+  ctx.save();
+  ctx.fillStyle = '#050c18';
+  ctx.beginPath(); ctx.arc(svCx, svCy, svR, 0, 2 * Math.PI); ctx.fill();
+  ctx.restore();
+
+  // ── All radial lines at ORIGINAL positions (dashed, dim) ──
+  for (let k = 0; k < nLines; k++) {
+    const alpha0 = (k / nLines) * 2 * Math.PI;
+    const px = svCx + svR * Math.sin(alpha0);
+    const py = svCy - svR * Math.cos(alpha0);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(34,211,238,0.18)';
+    ctx.lineWidth = 0.8; ctx.setLineDash([3, 4]);
+    ctx.beginPath(); ctx.moveTo(svCx, svCy); ctx.lineTo(px, py); ctx.stroke();
+    ctx.restore();
+  }
+
+  // ── All radial lines at ROTATED positions (solid, brighter when T > 0) ──
+  for (let k = 0; k < nLines; k++) {
+    const alpha0 = (k / nLines) * 2 * Math.PI;
+    const alphaR = alpha0 + phi;
+    const px = svCx + svR * Math.sin(alphaR);
+    const py = svCy - svR * Math.cos(alphaR);
+    const opa = T > 0.02 ? 0.65 : 0.18;
+    ctx.save();
+    ctx.strokeStyle = `rgba(34,211,238,${opa})`;
+    ctx.lineWidth = T > 0.02 ? 1.0 : 0.8;
+    ctx.beginPath(); ctx.moveTo(svCx, svCy); ctx.lineTo(px, py); ctx.stroke();
+    ctx.restore();
+  }
+
+  // ── Reference at α₀ = 0: original = 12 o'clock (green dashed) ──
+  ctx.save();
+  ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(svCx, svCy); ctx.lineTo(svCx, svCy - svR); ctx.stroke();
+  ctx.fillStyle = '#4ade80';
+  ctx.beginPath(); ctx.arc(svCx, svCy - svR, 3.5, 0, 2 * Math.PI); ctx.fill();
+  ctx.restore();
+
+  // ── Reference rotated by φ (amber solid) ──
+  if (T > 0.01) {
+    const rpx = svCx + svR * Math.sin(phi);
+    const rpy = svCy - svR * Math.cos(phi);
+    ctx.save();
+    ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(svCx, svCy); ctx.lineTo(rpx, rpy); ctx.stroke();
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath(); ctx.arc(rpx, rpy, 4.5, 0, 2 * Math.PI); ctx.fill();
+    ctx.restore();
+
+    // ── Arc showing angle of twist φ ──
+    ctx.save();
+    ctx.strokeStyle = 'rgba(245,158,11,0.55)'; ctx.lineWidth = 1.2; ctx.setLineDash([2, 3]);
+    const arcR2 = svR * 0.48;
+    ctx.beginPath();
+    for (let s = 0; s <= 80; s++) {
+      const a  = (s / 80) * phi;
+      const px = svCx + arcR2 * Math.sin(a);
+      const py = svCy - arcR2 * Math.cos(a);
+      s === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    // ── φ label ──
+    const midA = phi / 2;
+    const labR = svR * 0.64;
+    const labX = svCx + labR * Math.sin(midA);
+    const labY = svCy - labR * Math.cos(midA);
+    ctx.save();
+    ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 10px Space Mono';
+    ctx.textAlign = phi < Math.PI ? 'left' : 'right';
+    ctx.fillText(`φ=${(phi * 180 / Math.PI).toFixed(0)}°`,
+      labX + (phi < Math.PI ? 4 : -4), labY + 4);
+    ctx.restore();
+  }
+
+  // ── Circle outline (drawn on top of radial lines) ──
+  ctx.save();
+  ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(svCx, svCy, svR, 0, 2 * Math.PI); ctx.stroke();
+  ctx.restore();
+
+  // ── Center dot ──
+  ctx.save();
+  ctx.fillStyle = 'rgba(34,211,238,0.75)';
+  ctx.beginPath(); ctx.arc(svCx, svCy, 2.5, 0, 2 * Math.PI); ctx.fill();
+  ctx.restore();
+}
+
+function drawTorqueArrow(ctx, cx, cy, r, col, dir) {
+  const sa = -Math.PI * 0.55, ea = Math.PI * 0.55;
+  ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = 2;
+  ctx.beginPath();
+  dir > 0 ? ctx.arc(cx, cy, r, sa, ea) : ctx.arc(cx, cy, r, ea, sa, true);
+  ctx.stroke();
+  const tipA = dir > 0 ? ea : sa;
+  const hDir = dir > 0 ? tipA + Math.PI / 2 : tipA - Math.PI / 2;
+  const tx = cx + r * Math.cos(tipA), ty = cy + r * Math.sin(tipA);
+  ctx.fillStyle = col;
+  ctx.beginPath();
+  ctx.moveTo(tx, ty);
+  ctx.lineTo(tx - 9 * Math.cos(hDir - 0.4), ty - 9 * Math.sin(hDir - 0.4));
+  ctx.lineTo(tx - 9 * Math.cos(hDir + 0.4), ty - 9 * Math.sin(hDir + 0.4));
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  3.  BENDING
+//      Simply supported beam, central point load P
+//      v(ξ) / v_max = ξ(3 − 4ξ²)  for 0 ≤ ξ ≤ 0.5
+//      Plane sections remain plane (Euler-Bernoulli)
+// ═══════════════════════════════════════════════════════════
+function drawBending(P) {
+  const ctx = prepCtx('cv-bending');
+  const W = ctx._W, H = ctx._H;
+  ctx.clearRect(0, 0, W, H);
+
+  const cx    = W / 2;
+  const naY0  = H * 0.40;         // neutral axis Y (unloaded)
+  const L     = Math.min(W * 0.76, 560);
+  const bH    = 52;               // beam height in px
+  const x0    = cx - L / 2;      // left support
+  const x1    = cx + L / 2;      // right support
+  const vmax  = P * 62;          // midspan deflection in px
+  const nPts  = 240;
+
+  // Deflection
+  function vOf(xi) {
+    if (xi <= 0.5) return vmax * xi * (3 - 4 * xi * xi);
+    const m = 1 - xi; return vmax * m * (3 - 4 * m * m);
+  }
+  // Slope dv/dx (px/px)
+  function slopeOf(xi) {
+    if (xi <= 0.5) return vmax * (3 - 12 * xi * xi) / L;
+    const m = 1 - xi; return -vmax * (3 - 12 * m * m) / L;
+  }
+  function ptAt(xi) {
+    return { x: x0 + xi * L, y: naY0 + vOf(xi), s: slopeOf(xi) };
+  }
+
+  // ── Ghost of original beam ──
+  dashedRect(ctx, x0, naY0 - bH / 2, L, bH, 'rgba(86,104,128,0.35)');
+
+  // ── Beam filled shape ──
+  ctx.save();
+  ctx.beginPath();
+  // Top edge
+  for (let i = 0; i <= nPts; i++) {
+    const pt = ptAt(i / nPts);
+    const sl = pt.s, mag = Math.hypot(1, sl);
+    const ox = -sl / mag * (bH / 2), oy = 1 / mag * (bH / 2);
+    const px = pt.x + ox, py = pt.y - oy;
+    i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  }
+  // Bottom edge (reverse)
+  for (let i = nPts; i >= 0; i--) {
+    const pt = ptAt(i / nPts);
+    const sl = pt.s, mag = Math.hypot(1, sl);
+    const ox = -sl / mag * (bH / 2), oy = 1 / mag * (bH / 2);
+    const px = pt.x - ox, py = pt.y + oy;
+    ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  const bFill = ctx.createLinearGradient(0, naY0 - bH / 2, 0, naY0 + bH / 2 + vmax);
+  bFill.addColorStop(0,   P > 0.03 ? 'rgba(192,132,252,0.22)' : 'rgba(34,211,238,0.10)');
+  bFill.addColorStop(0.5, 'rgba(8,16,28,0.95)');
+  bFill.addColorStop(1,   P > 0.03 ? 'rgba(248,113,113,0.22)' : 'rgba(34,211,238,0.10)');
+  ctx.fillStyle = bFill; ctx.fill();
+  ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.restore();
+
+  // ── Neutral axis (dashed amber) ──
+  ctx.save(); ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 1.5; ctx.setLineDash([7, 5]);
+  ctx.beginPath();
+  for (let i = 0; i <= nPts; i++) {
+    const pt = ptAt(i / nPts);
+    i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y);
+  }
+  ctx.stroke(); ctx.restore();
+
+  // ── Cross-section grid lines (vertical in unloaded state, rotate with slope) ──
+  const nCS = 10;
+  for (let c = 0; c <= nCS; c++) {
+    const xi = c / nCS;
+    const pt = ptAt(xi);
+    const ang  = Math.atan(pt.s);
+    const ca = Math.cos(ang), sa = Math.sin(ang);
+    const ext = bH / 2 + 4;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(34,211,238,0.70)'; ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(pt.x - ext * (-sa), pt.y - ext * ca);
+    ctx.lineTo(pt.x + ext * (-sa), pt.y + ext * ca);
+    ctx.stroke(); ctx.restore();
+  }
+
+  // ── Fiber grid lines (horizontal fibers at fractional heights) ──
+  // frac > 0 = above neutral axis (compression), < 0 = below (tension)
+  const fibers = [
+    { frac:  0.44, col: '#c084fc', lw: 1.8 },   // top  – compression
+    { frac:  0.20, col: 'rgba(192,132,252,0.55)', lw: 1 },
+    { frac:  0.00, col: 'rgba(245,158,11,0)',    lw: 0 },   // neutral axis already drawn
+    { frac: -0.20, col: 'rgba(248,113,113,0.55)', lw: 1 },
+    { frac: -0.44, col: '#f87171', lw: 1.8 },   // bottom – tension
+  ];
+  fibers.forEach(({ frac, col, lw }) => {
+    if (lw === 0) return;
+    const yOff = -frac * bH; // offset perpendicular (positive = away from center toward top)
+    ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = lw;
+    ctx.beginPath();
+    for (let i = 0; i <= nPts; i++) {
+      const pt = ptAt(i / nPts);
+      const mag = Math.hypot(1, pt.s);
+      const nx = -pt.s / mag, ny = 1 / mag;
+      const px = pt.x + yOff * nx, py = pt.y + yOff * ny;
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.stroke(); ctx.restore();
+  });
+
+  // ── Tension / Compression labels on fibers ──
+  if (P > 0.08) {
+    const topFiberY  = naY0 + vOf(0) - bH * 0.44;   // top fiber at left end (undeflected at support)
+    const botFiberY  = naY0 + vOf(0) + bH * 0.44;   // bottom fiber at left end
+    ctx.save();
+    ctx.font = '9px Space Mono'; ctx.textAlign = 'left';
+    ctx.fillStyle = '#c084fc';
+    ctx.fillText('COMPRESSION →', x0 + 6, topFiberY - 5);
+    ctx.fillStyle = '#f87171';
+    ctx.fillText('TENSION →',     x0 + 6, botFiberY + 13);
+    ctx.restore();
+  }
+
+  // ── Supports ──
+  drawPinSupport(ctx, x0, naY0 + vOf(0));
+  drawRollerSupport(ctx, x1, naY0 + vOf(1));
+
+  // ── Load arrow at midspan ──
+  if (P > 0.01) {
+    const midPt = ptAt(0.5);
+    const arrowTop = midPt.y - bH / 2 - 3;
+    const aLen = 30 + P * 22;
+    arrow(ctx, midPt.x, arrowTop - aLen, midPt.x, arrowTop, '#f87171');
+    ctx.save(); ctx.fillStyle = '#f87171'; ctx.font = 'bold 13px Space Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('P', midPt.x, arrowTop - aLen - 7);
+    ctx.restore();
+  }
+
+  // ── Deflection annotation ──
+  if (P > 0.05) {
+    const midPt = ptAt(0.5);
+    const xAnn = x1 + 20;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(245,158,11,0.6)'; ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
+    ctx.beginPath(); ctx.moveTo(xAnn, naY0); ctx.lineTo(xAnn, midPt.y); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(xAnn - 5, naY0);    ctx.lineTo(xAnn + 5, naY0);
+    ctx.moveTo(xAnn - 5, midPt.y); ctx.lineTo(xAnn + 5, midPt.y);
+    ctx.stroke(); ctx.restore();
+    ctx.save(); ctx.fillStyle = '#f59e0b'; ctx.font = '9px Space Mono';
+    ctx.textAlign = 'left';
+    ctx.fillText('v_max', xAnn + 6, (naY0 + midPt.y) / 2 + 3);
+    ctx.restore();
+  }
+
+  // ── Reaction arrows ──
+  if (P > 0.01) {
+    const aLen = 22 + P * 14;
+    arrow(ctx, x0, naY0 + vOf(0) + aLen, x0, naY0 + vOf(0) + 2, '#22d3ee', 8, 2);
+    arrow(ctx, x1, naY0 + vOf(1) + aLen, x1, naY0 + vOf(1) + 2, '#22d3ee', 8, 2);
+  }
+}
+
+function drawPinSupport(ctx, x, y) {
+  const s = 12;
+  ctx.save(); ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 1.8;
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - s, y + s * 1.4); ctx.lineTo(x + s, y + s * 1.4); ctx.closePath(); ctx.stroke();
+  const gLen = s + 6;
+  ctx.lineWidth = 1.3; ctx.strokeStyle = 'rgba(34,211,238,0.7)';
+  ctx.beginPath(); ctx.moveTo(x - gLen, y + s * 1.4); ctx.lineTo(x + gLen, y + s * 1.4); ctx.stroke();
+  ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(34,211,238,0.4)';
+  for (let i = -2; i <= 2; i++) {
+    ctx.beginPath(); ctx.moveTo(x + i * 5, y + s * 1.4); ctx.lineTo(x + i * 5 - 6, y + s * 1.9); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawRollerSupport(ctx, x, y) {
+  const s = 12;
+  ctx.save(); ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 1.8;
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - s, y + s * 1.4); ctx.lineTo(x + s, y + s * 1.4); ctx.closePath(); ctx.stroke();
+  // Roller circle
+  ctx.beginPath(); ctx.arc(x, y + s * 1.4 + 6, 5, 0, 2 * Math.PI); ctx.stroke();
+  ctx.lineWidth = 1.3; ctx.strokeStyle = 'rgba(34,211,238,0.7)';
+  const gLen = s + 6;
+  ctx.beginPath(); ctx.moveTo(x - gLen, y + s * 1.4 + 12); ctx.lineTo(x + gLen, y + s * 1.4 + 12); ctx.stroke();
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  HUMOR BANKS
+// ═══════════════════════════════════════════════════════════
+const HUMOR = {
+  axial_neutral : ['😐', 'Drag the slider. The bar is begging for purpose.'],
+  axial_t : [
+    [0.05, '🤔', 'A gentle pull. The bar is intrigued.'],
+    [0.20, '😮', "It's stretching — just like your deadline."],
+    [0.45, '😬', "ε = PL/AE kicks in. The Poisson effect narrows it down. Literally."],
+    [0.65, '😰', "Significant elongation. The bar has accepted its fate."],
+    [0.85, '🚨', "WARNING: bar is basically spaghetti at this point."],
+    [0.97, '💀', "MAXIMUM TENSION. This is not a drill. It's a tensile test."],
+  ],
+  axial_c : [
+    [0.05, '🤔', 'A gentle push. The bar is bracing itself.'],
+    [0.20, '😮', "Compression! Lateral expansion via Poisson — it's getting thicc."],
+    [0.45, '😬', "σ = P/A is not zero. Neither is your professor's disappointment."],
+    [0.65, '😰', "Significant squish. The bar knows how Monday feels."],
+    [0.85, '🚨', "Approaching Euler buckling territory. Tread carefully."],
+    [0.97, '💀', "MAX COMPRESSION. σ_cr is displeased. The bar: 'I can't even.'"],
+  ],
+  torsion : [
+    [0.00, '😐', "Apply some torque. Those straight lines look suspiciously smug."],
+    [0.05, '🔄', "φ = TL/GJ stirs to life. Grid lines: 'wait, why are we moving?'"],
+    [0.20, '😬', "τ = Tc/J rising. Shear stress grows faster than exam anxiety."],
+    [0.40, '😰', "Helical grid lines intensify. The shaft is doing the twist 🕺"],
+    [0.60, '🚨', "These grid lines have more curves than a spline interpolation."],
+    [0.80, '💀', "Nearly full rotation. γ = rφ/L. Shaft says: I didn't sign up for this."],
+    [0.97, '☠️', "MAX TORQUE. J = πc⁴/2. Shaft and dignity: both twisted beyond recognition."],
+  ],
+  bending : [
+    [0.00, '😐', "Apply load. Euler-Bernoulli is watching. And judging."],
+    [0.05, '🤔', "v = Px(3L²−4x²)/48EI. The beam politely disagrees with gravity."],
+    [0.20, '😬', "Plane sections remain plane. Cross-sections are rotating like clockwork."],
+    [0.40, '😰', "Top fiber: compressed (purple). Bottom fiber: in tension (red). Neutral axis: in denial."],
+    [0.60, '🚨', "κ = M/EI is not playing games. The beam is visibly struggling."],
+    [0.80, '💀', "v_max = PL³/48EI. Significant midspan deflection. Beam files HR complaint."],
+    [0.97, '☠️', "MAXIMUM LOAD. σ = −My/I is off the charts. Beam and pride: both bent."],
+  ]
+};
+
+function pickHumor(bank, val) {
+  for (let i = bank.length - 1; i >= 0; i--) {
+    if (val >= bank[i][0]) return { ico: bank[i][1], msg: bank[i][2] };
+  }
+  return { ico: bank[0][1], msg: bank[0][2] };
+}
+
+function setHumor(id, ico, msg) {
+  document.getElementById(id + '-ico').textContent = ico;
+  document.getElementById(id + '-msg').textContent = msg;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EVENT HANDLERS
+// ═══════════════════════════════════════════════════════════
+function onAxial(v100) {
+  S.axial = v100 / 100;
+  drawAxial(S.axial);
+  const P  = S.axial, eps = P * 0.26, nu = 0.30;
+  const el = document.getElementById('axial-state');
+  if (Math.abs(P) < 0.02) {
+    el.textContent = "No load — bar is chillin' 😎";
+    el.style.color = '#22d3ee';
+    setHumor('axial', HUMOR.axial_neutral[0], HUMOR.axial_neutral[1]);
+  } else if (P > 0) {
+    el.innerHTML = `Tension: ε = +${(eps*100).toFixed(1)}%<br>ε_lat = ${(-nu*eps*100).toFixed(1)}%`;
+    el.style.color = '#f87171';
+    const h = pickHumor(HUMOR.axial_t, P);
+    setHumor('axial', h.ico, h.msg);
+  } else {
+    el.innerHTML = `Compression: ε = ${(eps*100).toFixed(1)}%<br>ε_lat = +${(-nu*eps*100).toFixed(1)}%`;
+    el.style.color = '#c084fc';
+    const h = pickHumor(HUMOR.axial_c, -P);
+    setHumor('axial', h.ico, h.msg);
+  }
+}
+
+function onTorsion(v100) {
+  S.torsion = v100 / 100;
+  drawTorsion(S.torsion);
+  const T = S.torsion;
+  const phiDeg = (T * Math.PI * 1.3 * 180 / Math.PI).toFixed(1);
+  const el = document.getElementById('torsion-state');
+  if (T < 0.02) {
+    el.textContent = 'No torque — shaft is perfectly boring';
+    el.style.color = '#22d3ee';
+  } else {
+    el.innerHTML = `φ = ${phiDeg}° total twist<br>τ_max = Tc/J ↑ with T`;
+    el.style.color = '#4ade80';
+  }
+  const h = pickHumor(HUMOR.torsion, T);
+  setHumor('torsion', h.ico, h.msg);
+}
+
+function onBending(v100) {
+  S.bending = v100 / 100;
+  drawBending(S.bending);
+  const P = S.bending;
+  const vmm = (P * 62).toFixed(1);
+  const el = document.getElementById('bending-state');
+  if (P < 0.02) {
+    el.textContent = 'No load — beam at full dignity';
+    el.style.color = '#22d3ee';
+  } else {
+    el.innerHTML = `v_max ≈ ${vmm} px (scaled)<br>κ = M/EI, max at midspan`;
+    el.style.color = '#f87171';
+  }
+  const h = pickHumor(HUMOR.bending, P);
+  setHumor('bending', h.ico, h.msg);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  TAB SWITCHING
+// ═══════════════════════════════════════════════════════════
+const TABS = ['axial', 'torsion', 'bending'];
+function showTab(name) {
+  TABS.forEach(t => {
+    document.getElementById('panel-' + t).classList.toggle('active', t === name);
+    document.getElementById('btn-'   + t).classList.toggle('active', t === name);
+  });
+  // Redraw the newly visible canvas
+  if (name === 'axial')   drawAxial(S.axial);
+  if (name === 'torsion') drawTorsion(S.torsion);
+  if (name === 'bending') drawBending(S.bending);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+window.addEventListener('load', () => {
+  drawAxial(0);
+  // Redraw on resize (responsive canvas)
+  window.addEventListener('resize', () => {
+    const active = document.querySelector('.panel.active').id.replace('panel-', '');
+    if (active === 'axial')   drawAxial(S.axial);
+    if (active === 'torsion') drawTorsion(S.torsion);
+    if (active === 'bending') drawBending(S.bending);
+  });
+});
+</script>
+</body>
+</html>
